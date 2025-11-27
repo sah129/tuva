@@ -15,10 +15,15 @@ select
   , invalid_reason
   , field_value
   , tuva_last_run
-  , dense_rank() over (
-        order by data_source
-               , table_name
-               , claim_type
-               , field_name
-    ) as summary_sk
+ -- , dense_rank() over (
+ --       order by data_source
+ --              , table_name
+ --              , claim_type
+ --              , field_name
+ --   ) as summary_sk
+
+    , lower(to_hex(md5(cast(data_source || '-' || table_name || '-' || claim_type || '-' || field_name as varbinary)))) as summary_sk
+
+
+
 from {{ ref('data_quality__data_quality_claims_detail_union') }}
