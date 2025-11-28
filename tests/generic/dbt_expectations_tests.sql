@@ -49,7 +49,7 @@
       {% endif %}
     )
 
-    SELECT  
+    SELECT
       {{ column_A}}
     FROM filtered_data
     WHERE NOT ('{{ quote_column(column_A)}}' {{ operator }} '{{ quote_column(column_B)}}')
@@ -149,7 +149,7 @@
       {% endif %}
     )
 
-    SELECT {{ column_name }} 
+    SELECT {{ column_name }}
     FROM filtered_data
     WHERE NOT (
       {% if min_value is not none %} LEN('{{ quote_column(column_name)}}' ) {{ min_operator }} {{ min_value }}{% endif %}
@@ -191,7 +191,7 @@
       {% endif %}
     )
 
-    SELECT 
+    SELECT
       group_by_col
       , unique_value_count
     FROM unique_values
@@ -243,19 +243,19 @@
     )
 
     {% for col in adapter.get_columns_in_relation(model) %}
-      {% if column_name == col.name and 'diagnosis_code' in col.name %} 
+      {% if column_name == col.name and 'diagnosis_code' in col.name %}
         SELECT {{ column_name }}
         FROM filtered_data
         WHERE NOT (
-          (LEN({{ column_name }} ) BETWEEN 3 AND 8 AND PATINDEX('[A-Z][0-9A-Z][0-9A-Z]%', {{ column_name }} ) = 1 AND {{ column_name }} NOT LIKE '%[^0-9A-Z]%') 
+          (LEN({{ column_name }} ) BETWEEN 3 AND 8 AND PATINDEX('[A-Z][0-9A-Z][0-9A-Z]%', {{ column_name }} ) = 1 AND {{ column_name }} NOT LIKE '%[^0-9A-Z]%')
           OR
           (
             PATINDEX('%[0-9][.]%', {{ column_name }} ) = 1 AND (SUBSTRING({{ column_name }}, 0, CHARINDEX('.', {{ column_name }} )) LIKE '[A-Z][0-9]'
             OR SUBSTRING({{ column_name }} , 0, CHARINDEX('.', {{ column_name }} )) LIKE '[A-Z][0-9][0-9]') AND SUBSTRING({{ column_name }} , CHARINDEX('.', {{ column_name }} )+1,LEN({{ column_name }} )) NOT LIKE '%[^0-9A-Z]%'
-          ) 
-          OR 
+          )
+          OR
           (
-            PATINDEX('[0-9][0-9][0-9]%', {{ column_name }} ) = 1 AND (({{ column_name }}  NOT LIKE '%.%' AND LEN({{ column_name }} ) = 3) OR 
+            PATINDEX('[0-9][0-9][0-9]%', {{ column_name }} ) = 1 AND (({{ column_name }}  NOT LIKE '%.%' AND LEN({{ column_name }} ) = 3) OR
           {{ column_name }}  LIKE '%.%' AND (SUBSTRING({{ column_name }} , CHARINDEX('.', {{ column_name }} )+1,LEN({{ column_name }} )) like '[0-9]' OR SUBSTRING({{ column_name }} , CHARINDEX('.', {{ column_name }} )+1,LEN({{ column_name }} )) like '[0-9][0-9]')
             )
           )
@@ -265,7 +265,7 @@
           )
           OR
           (
-            PATINDEX('[VE][0-9][0-9][0-9]%', {{ column_name }} ) = 1 AND (({{ column_name }}  NOT LIKE '%.%' AND LEN({{ column_name }} ) = 4) 
+            PATINDEX('[VE][0-9][0-9][0-9]%', {{ column_name }} ) = 1 AND (({{ column_name }}  NOT LIKE '%.%' AND LEN({{ column_name }} ) = 4)
             OR ({{ column_name }}  LIKE '%.%' AND SUBSTRING({{ column_name }} , CHARINDEX('.', {{ column_name }} )+1,LEN({{ column_name }} )) like '[0-9]')
           )
           )
@@ -277,7 +277,21 @@
         )
       {% endif %}
     {% endfor %}
+    {% elif target.type == 'athena' %}
+        SELECT {{ column_name }}
+        FROM {{ model }}
+        WHERE (
+        {% for regex in regex_list %}
+            REGEXP_LIKE({{ column_name }}, {{ regex }} )
+            {%- if not loop.last %}
+                {{ " and " if match_on == "all" else " or "}}
+            {% endif -%}
+        {% endfor %}
+    )
+      {% if row_condition %}
+      and {{ row_condition }}
+      {% endif %}
   {% else %}
     {{ dbt_expectations.test_expect_column_values_to_match_regex_list(model, column_name, regex_list, match_on, row_condition, is_raw, flags) }}
   {% endif %}
-{% endtest %}    
+{% endtest %}
