@@ -3,10 +3,10 @@ models:
   - name: input_layer__eligibility
     description: |
       Mapping check to make sure all columns are mapped appropriately into the input layer.
-      The eligibility table includes information about a patient's health 
-      insurance coverage and demographics (note: we use the word patient as a 
-      synonym for member). Every claims dataset should include some sort of 
-      eligibility data, otherwise it's impossible to calculate member months, 
+      The eligibility table includes information about a patient's health
+      insurance coverage and demographics (note: we use the word patient as a
+      synonym for member). Every claims dataset should include some sort of
+      eligibility data, otherwise it's impossible to calculate member months,
       which are needed to calculate measures like PMPM.
     tests:
       - dbt_utils.unique_combination_of_columns:
@@ -17,7 +17,7 @@ models:
             - enrollment_end_date
             - "{{ '\"plan\"' if (target.type == 'fabric') else 'plan' }}"
             - payer
-            - data_source     
+            - data_source
           tags: ['tuva_dqi_sev_1', 'dqi', 'dqi_service_categories', 'dqi_ccsr', 'dqi_cms_chronic_conditions',
             'dqi_tuva_chronic_conditions', 'dqi_cms_hccs', 'dqi_ed_classification',
             'dqi_financial_pmpm', 'dqi_quality_measures', 'dqi_readmission']
@@ -208,7 +208,7 @@ models:
               tags: [ 'tuva_dqi_sev_2', 'dqi' ]
               config:
                 severity: warn
-                enabled: "{{ target.type != 'bigquery' }}"
+                enabled: "{{ target.type not in ('bigquery','athena') }}"
           # BigQuery specific test with proper casting
           - accepted_values:
               values: [ '0', '1' ]
@@ -218,6 +218,14 @@ models:
                 enabled: "{{ target.type == 'bigquery' }}"
               quote: false
               column_name: "CAST(death_flag AS STRING)"
+          - accepted_values:
+              values: [ '0', '1' ]
+              tags: [ 'tuva_dqi_sev_2', 'dqi' ]
+              config:
+                severity: warn
+                enabled: "{{ target.type == 'athena' }}"
+              quote: false
+              column_name: "CAST(death_flag AS VARCHAR)"
       - name: enrollment_start_date
         description: '{{ doc("enrollment_start_date") }}'
         tests:
