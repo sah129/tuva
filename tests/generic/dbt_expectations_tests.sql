@@ -113,7 +113,7 @@
     )
     --there is an internal dbt test that is run after this that calculates the failure count
     --this test evaluates the number of records, so the column of interest (column_name) is pulled
-  {% if target.type == 'athena' %}
+  {% elif target.type == 'athena' %}
     {%- set min_operator = '>' if strictly else '>=' -%}
     {%- set max_operator = '<' if strictly else '<=' -%}
 
@@ -128,9 +128,9 @@
     SELECT {{ column_name }}
     FROM filtered_data
     WHERE NOT (
-      {% if min_value is not none %} {{ column_name }}  {{ min_operator }} cast({{ min_value }} as date) {% endif %} /* todo: get data type of col to handle non-date types */
+      {% if min_value is not none %} cast({{ column_name }} as date) {{ min_operator }} cast({{ min_value }} as date) {% endif %} /* todo: get data type of col to handle non-date types */
       {% if min_value is not none and max_value is not none %}AND{% endif %}
-      {% if max_value is not none %} {{ column_name }} {{ max_operator }} cast({{ max_value }} as date) {% endif %}
+      {% if max_value is not none %} cast({{ column_name }} as date) {{ max_operator }} cast({{ max_value }} as date) {% endif %}
     )
   {% else %}
     {{ dbt_expectations.test_expect_column_values_to_be_between(model, column_name, min_value, max_value, strictly, row_condition) }}
@@ -246,6 +246,13 @@
     {% else %} --for admit_type_code, place_of_service_code, rendering_npi, billing_npi, facility_npi
     WHERE NOT PATINDEX('{{ pattern1 }}', {{ column_name }} ) = 1
     {% endif %}
+    {% elif target.type == 'athena' %}
+        SELECT {{ column_name }}
+        FROM {{ model }}
+        WHERE REGEXP_LIKE({{ column_name }}, '{{ regex }}'
+        {% if row_condition %}
+            AND {{ row_condition }}
+        {% endif %}
   {% else %}
     {{ dbt_expectations.test_expect_column_values_to_match_regex(model, column_name, regex, row_condition, is_raw, flags) }}
   {% endif %}
@@ -301,7 +308,7 @@
         FROM {{ model }}
         WHERE (
         {% for regex in regex_list %}
-            REGEXP_LIKE({{ column_name }}, {{ regex }} )
+            REGEXP_LIKE({{ column_name }}, '{{ regex }}' )
             {%- if not loop.last %}
                 {{ " and " if match_on == "all" else " or "}}
             {% endif -%}
