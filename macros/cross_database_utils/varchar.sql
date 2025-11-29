@@ -9,7 +9,3 @@
 {% macro databricks__varchar() -%}
     VARCHAR(255)
 {%- endmacro %}
-
-{% macro athena__varchar() -%}
-    VARCHAR
-{%- endmacro %}
