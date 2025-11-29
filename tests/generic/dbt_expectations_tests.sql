@@ -117,21 +117,31 @@
     {%- set min_operator = '>' if strictly else '>=' -%}
     {%- set max_operator = '<' if strictly else '<=' -%}
 
-    WITH filtered_data AS (
-      SELECT *
-      FROM {{ model }}
-      {% if row_condition %}
-      WHERE {{ row_condition }}
-      {% endif %}
-    )
+    {% if execute %}
+        {% for col in adapter.get_columns_in_relation(model) %}
+            {% if col.name  == column_name %}
+                {%- set expression -%}
+                    WITH filtered_data AS (
+                    SELECT *
+                    FROM {{ model }}
+                    {% if row_condition %}
+                    WHERE {{ row_condition }}
+                    {% endif %}
+                    )
 
-    SELECT {{ column_name }}
-    FROM filtered_data
-    WHERE NOT (
-      {% if min_value is not none %} cast({{ column_name }} as date) {{ min_operator }} cast({{ min_value }} as date) {% endif %} /* todo: get data type of col to handle non-date types */
-      {% if min_value is not none and max_value is not none %}AND{% endif %}
-      {% if max_value is not none %} cast({{ column_name }} as date) {{ max_operator }} cast({{ max_value }} as date) {% endif %}
-    )
+                    SELECT {{ column_name }}
+                    FROM filtered_data
+                    WHERE NOT (
+                    {% if min_value is not none %} cast({{ column_name }} as {{ col.data_type }}) {{ min_operator }} cast({{ min_value }} as {{ col.data_type }}) {% endif %}
+                    {% if min_value is not none and max_value is not none %}AND{% endif %}
+                    {% if max_value is not none %} cast({{ column_name }} as {{ col.data_type }} ) {{ max_operator }} cast({{ max_value }} as {{ col.data_type }}) {% endif %}
+                    )
+                {% endset %}
+                {{ expression }}
+            {% endif %}
+        {% endfor %}
+    {% endif %}
+
   {% else %}
     {{ dbt_expectations.test_expect_column_values_to_be_between(model, column_name, min_value, max_value, strictly, row_condition) }}
   {% endif %}
@@ -249,7 +259,7 @@
     {% elif target.type == 'athena' %}
         SELECT {{ column_name }}
         FROM {{ model }}
-        WHERE REGEXP_LIKE({{ column_name }}, '{{ regex }}'
+        WHERE NOT REGEXP_LIKE({{ column_name }}, '{{ regex }}')
         {% if row_condition %}
             AND {{ row_condition }}
         {% endif %}
@@ -306,7 +316,7 @@
     {% elif target.type == 'athena' %}
         SELECT {{ column_name }}
         FROM {{ model }}
-        WHERE (
+        WHERE NOT (
         {% for regex in regex_list %}
             REGEXP_LIKE({{ column_name }}, '{{ regex }}' )
             {%- if not loop.last %}
