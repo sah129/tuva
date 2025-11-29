@@ -34,15 +34,16 @@ select
     , dt.description as test_description
     , dt.package_name as test_package_name
     , dt.type as test_type
-    {%- if target.type == 'athena' -%}
-        , cast(dt.generated_at as timestamp) as generated_at
-    {%- else -%}
-        , dt.generated_at
-    {%- endif -%}
+    , dt.generated_at
     , dt.metadata_hash
     , dt.quality_dimension
-    , etr.detected_at
-    , etr.created_at
+    {%- if target.type == 'athena' -%}
+        , cast(etr.detected_at as timestamp) as detected_at
+        , cast(etr.created_at as timestamp) as created_at
+    {%- else -%}
+        , etr.detected_at
+        , etr.created_at
+    {%- endif -%}
     , etr.column_name
     , etr.test_sub_type
     , etr.test_results_description
